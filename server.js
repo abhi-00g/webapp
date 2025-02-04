@@ -32,9 +32,13 @@ app.get('/healthz', async(req,res) => {
     }
 });
 
-app.all('/healthz', (req,res) => {
+app.all('/healthz', (req, res) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
     res.status(405).send();
 });
+
+module.exports = app;
 
 async function retryConnection(){
     let tries = 5;
@@ -97,4 +101,7 @@ process.on('SIGINT', async () => {
     process.exit(0);
 })
 
-start();
+if (require.main === module) {
+    start();
+}
+
