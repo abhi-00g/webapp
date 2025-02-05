@@ -1,17 +1,16 @@
 #!/bin/bash
 
-# Exit immediately if a command fails
 set -e
 
 # Update and Upgrade the System
 echo "Updating and upgrading system packages"
 sudo apt update -y && sudo apt upgrade -y
 
-# Install Required Packages (PostgreSQL, Node.js, npm, unzip)
+# Install Required Packages like PostgreSQL, Node.js, npm, etc
 echo "Installing PostgreSQL, Node.js, and npm."
 sudo apt install -y postgresql postgresql-contrib nodejs npm unzip 
 
-# Start PostgreSQL Service
+# Start PostgreSQL
 echo "Starting PostgreSQL service..."
 sudo systemctl enable postgresql
 sudo systemctl start postgresql
@@ -24,8 +23,7 @@ if [ -z "$DB_PASSWORD" ]; then
   exit 1
 fi
 
-#configuring the database 
-
+#Configuring the Database 
 echo "Configuring Database"
 
 sudo -u postgres psql <<EOF
@@ -35,7 +33,7 @@ GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
 ALTER USER postgres WITH SUPERUSER;
 EOF
 
-# Create a healthcheck_database database
+# Create a health_check_db database
 echo "Creating database 'health_check_db'..."
 sudo -u postgres psql -c "CREATE DATABASE health_check_db;"
 
@@ -55,7 +53,7 @@ echo "Unzipping application to $APP_DIR..."
 sudo mkdir -p $APP_DIR
 sudo unzip -o $ZIP_FILE -d $APP_DIR
 
-# Set Correct Permissions
+# Set Permissions
 echo "Setting permissions..."
 sudo chown -R $APP_USER:$APP_GROUP $APP_DIR
 sudo chmod -R 750 $APP_DIR
