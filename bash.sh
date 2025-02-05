@@ -47,7 +47,7 @@ sudo useradd -m -g $APP_GROUP -s /bin/bash $APP_USER || true
 
 # Unzip the Application into /opt/csye6225
 APP_DIR="/opt/csye6225"
-ZIP_FILE="VenkataKrishnaRajAbhishek_Gade_002308213_1.zip"
+ZIP_FILE="VenkataKrishnaRajAbhishek_Gade_002308213_2.zip"
 
 echo "Unzipping application to $APP_DIR..."
 sudo mkdir -p $APP_DIR
@@ -60,7 +60,7 @@ sudo chmod -R 750 $APP_DIR
 
 # Install Node.js Dependencies Automatically
 echo "Installing Node.js dependencies..."
-APP_PATH="$APP_DIR/VenkataKrishnaRajAbhishek_Gade_002308213_1/webapp"
+APP_PATH="$APP_DIR/VenkataKrishnaRajAbhishek_Gade_002308213_2/webapp"
 
 if [ -d "$APP_PATH" ]; then
     cd "$APP_PATH"
