@@ -11,7 +11,9 @@ To build a cloud-native backend application
 7. monitorConnection() is used to check whether the database is still connected or if the connection is lost
 8. If the connection is lost, retryConnection() function helps to retconnect to the database
 9. SIGINT signal is used to close the database connection
-10. We then run HealthCheck.test.js by node tests/HealthCheck.test.js to implement API testing 
+10. We use npm install --save-dev supertest
+11. We use npm install --save-dev jest
+12. We then run HealthCheck.test.js by npx tests/HealthCheck.test.js to implement API testing 
    
 ## Testing
 1. curl -X GET http://localhost:3000/healthz -i    -- this will get 200 OK
