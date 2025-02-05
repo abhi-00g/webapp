@@ -16,6 +16,9 @@ app.use('/healthz', express.text(), (req, res, next) => {
 
 app.get('/healthz', async(req,res) => {
     try{
+        if (Object.keys(req.query).length > 0) {
+            return res.status(400).send();
+        }
 
         //throw new Error('Simulated database error');
         await HealthCheck.create({
