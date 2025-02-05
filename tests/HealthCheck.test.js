@@ -20,17 +20,41 @@ describe('HealthCheck API', () => {
         expect(res.headers['cache-control']).toContain('no-cache');
         expect(res.headers['pragma']).toBe('no-cache');
     });
+    
+    it('should return 405 for unsupported method POST /healthz', async () => {
+        const res  = await request(app).post('/healthz');
+        expect(res.status).toBe(405);
+        expect(res.headers).toHaveProperty('cache-control');
+        expect(res.headers['cache-control']).toContain('no-cache');
+        expect(res.headers).toHaveProperty('pragma');
+        expect(res.headers['pragma']).toBe('no-cache');
+    });
 
-    it('should return 405 for unsupported methods', async () => {
-        const methods = ['put', 'post', 'delete', 'patch'];
-        for (const method of methods) {
-            const res = await request(app)[method]('/healthz');
-            expect(res.status).toBe(405);
-            expect(res.headers).toHaveProperty('cache-control');
-            expect(res.headers['cache-control']).toContain('no-cache');
-            expect(res.headers).toHaveProperty('pragma');
-            expect(res.headers['pragma']).toBe('no-cache');
-        }
+    it('should return 405 for unsupported method PUT /healthz', async () => {
+        const res  = await request(app).put('/healthz');
+        expect(res.status).toBe(405);
+        expect(res.headers).toHaveProperty('cache-control');
+        expect(res.headers['cache-control']).toContain('no-cache');
+        expect(res.headers).toHaveProperty('pragma');
+        expect(res.headers['pragma']).toBe('no-cache');
+    });
+
+    it('should return 405 for unsupported method PATCH /healthz', async () => {
+        const res  = await request(app).patch('/healthz');
+        expect(res.status).toBe(405);
+        expect(res.headers).toHaveProperty('cache-control');
+        expect(res.headers['cache-control']).toContain('no-cache');
+        expect(res.headers).toHaveProperty('pragma');
+        expect(res.headers['pragma']).toBe('no-cache');
+    });
+
+    it('should return 405 for unsupported method DELETE /healthz', async () => {
+        const res  = await request(app).delete('/healthz');
+        expect(res.status).toBe(405);
+        expect(res.headers).toHaveProperty('cache-control');
+        expect(res.headers['cache-control']).toContain('no-cache');
+        expect(res.headers).toHaveProperty('pragma');
+        expect(res.headers['pragma']).toBe('no-cache');
     });
 
     it('should return 400 Bad Request if request has a body', async () => {
