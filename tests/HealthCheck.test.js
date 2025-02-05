@@ -57,8 +57,18 @@ describe('HealthCheck API', () => {
         expect(res.headers['pragma']).toBe('no-cache');
     });
 
-    it('should return 400 Bad Request if request has a body', async () => {
+    it('should return 400 Bad Request if request has an empty body', async () => {
         const res = await request(app).get('/healthz').send({});
+        expect(res.status).toBe(400);
+    });
+
+    it('should return 400 Bad Request if request has a non-empty body', async () => {
+        const res = await request(app).get('/healthz').send({ key: "value" });
+        expect(res.status).toBe(400);
+    });
+    
+    it('should return 400 Bad Request if request has query parameters', async () => {
+        const res = await request(app).get('/healthz?test=value');
         expect(res.status).toBe(400);
     });
 

@@ -1,4 +1,4 @@
-## Assignment-1
+## Cloud_Assignment
 To build a cloud-native backend application 
 
 ## Steps
@@ -11,6 +11,7 @@ To build a cloud-native backend application
 7. monitorConnection() is used to check whether the database is still connected or if the connection is lost
 8. If the connection is lost, retryConnection() function helps to retconnect to the database
 9. SIGINT signal is used to close the database connection
+10. We then run HealthCheck.test.js by node tests/HealthCheck.test.js to implement API testing 
    
 ## Testing
 1. curl -X GET http://localhost:3000/healthz -i    -- this will get 200 OK
@@ -27,5 +28,6 @@ To build a cloud-native backend application
 2. We then use npm install to download node_package
 3. We create a .env file again and fill the data
 4. We then run the application and perform testing
+5. The command node tests/HealthCheck.test.js will automate tests and tell us how many test cases passed and how many failed
 
     
