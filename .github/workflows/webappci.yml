@@ -41,8 +41,6 @@ jobs:
     
     - name: Install Node.js dependencies
       run: npm install
-      working-directory: webapp
     
     - name: Running tests
       run: npx jest tests/HealthCheck.test.js
-      working-directory: webapp
