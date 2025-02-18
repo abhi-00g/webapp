@@ -1,4 +1,4 @@
-name: Webapp CI
+name: webapp CI
 
 on: 
   pull_request:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   test:
-    name: Runner specification
+    name: pr-check
     runs-on: ubuntu-latest
     env:
       DB_NAME: ${{secrets.DB_NAME}}
@@ -19,18 +19,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up PostgreSQL
+    - name: Setting up PostgreSQL
       run: |
         sudo apt update
         sudo apt install -y postgresql postgresql-contrib
         sudo systemctl start postgresql
+
+    - name: Configure PostgreSQL User and Database
+      run: |
+        sudo -i -u postgres psql <<EOF
+        ALTER USER postgres WITH PASSWORD '${{ secrets.DB_PASSWORD }}';
+        GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
+        ALTER USER postgres WITH SUPERUSER;
+        CREATE DATABASE health_check_db;
+        EOF    
 
     - name: Set up Node.js using GitHub Action
       uses: actions/setup-node@v3
       with:
           node-version: '18.x'
     
-    - name: Install npm dependencies
-      run: npm i
-
-      
+    - name: Install Node.js dependencies
+      run: npm install
+    
+    - name: Running tests
+      run: npx jest tests/HealthCheck.test.js
