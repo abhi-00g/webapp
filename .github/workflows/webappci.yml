@@ -1,0 +1,38 @@
+name: webapp CI
+
+on: 
+    pull_request:
+        branches: [main]
+
+jobs:
+    run-tests:
+        name: webapp secrets
+        runs-on: ubuntu-latest
+        env:
+            DB_NAME: ${{secrets.DB_NAME}}
+            DB_PORT: ${{secrets.DB_PORT}}
+            DB_HOST: ${{secrets.DB_HOST}}
+            DB_USER: ${{secrets.DB_USER}}
+            DB_PASSWORD: ${{secrets.DB_PASSWORD}}
+        
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4    
+              
+            - name: PostgreSQL setup
+              run: |
+                sudo apt update -y
+                sudo apt install -y postgresql postgresql-contrib
+                sudo systemctl start postgresql
+
+            - name: Set up Node.js using Github Action
+              uses: actions/setup-node@v3
+              with:
+                node-version: '18.x'
+
+            - name: Installing Node.js dependencies
+              run: npm install    
+
+            - name: Running tests
+              run: npx jest webapp/tests/HealthCheck.test.js
+    
