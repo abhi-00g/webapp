@@ -13,7 +13,7 @@ source "amazon-ebs" "aws_image" {
   ami_name      = "aws-ami-{{timestamp}}"
   source_ami    = var.source_ami
   subnet_id     = var.subnet_id
-  ssh_username = var.ssh_username
+  ssh_username  = var.ssh_username
 
   tags = {
     Name        = "aws-mi"
@@ -41,39 +41,39 @@ build {
     ]
   }
 
- # Install System Dependencies 
-provisioner "shell" {
-  inline = [
-    "export DEBIAN_FRONTEND=noninteractive", 
-    "sudo apt update -y",
-    "sudo apt install -y --no-install-recommends apt-utils",  # Ensures faster package installs
-    "sudo apt install -y --no-install-recommends postgresql postgresql-contrib unzip",
-    "curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -",
-    "sudo apt install -y --no-install-recommends nodejs",
-  ]
-}
+  # Install System Dependencies 
+  provisioner "shell" {
+    inline = [
+      "export DEBIAN_FRONTEND=noninteractive",
+      "sudo apt update -y",
+      "sudo apt install -y --no-install-recommends apt-utils", # Ensures faster package installs
+      "sudo apt install -y --no-install-recommends postgresql postgresql-contrib unzip",
+      "curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -",
+      "sudo apt install -y --no-install-recommends nodejs",
+    ]
+  }
 
-  
+
   # Execute the user script
   provisioner "shell" {
     script = "./scripts/user"
   }
-  
+
 
   # webapp application
   provisioner "file" {
     source      = "./webapp.zip"
     destination = "/tmp/webapp.zip"
   }
-  
-  
+
+
   provisioner "shell" {
     script = "./scripts/file_extract"
   }
 
   provisioner "file" {
-  source      = "webapp.service" 
-  destination = "/tmp/webapp.service"
+    source      = "webapp.service"
+    destination = "/tmp/webapp.service"
   }
 
 
@@ -81,9 +81,9 @@ provisioner "shell" {
     script = "./scripts/script"
   }
 
-  
 
-    provisioner "shell" {
+
+  provisioner "shell" {
     script = "./scripts/db_bash"
     environment_vars = [
       "DB_PASSWORD=${var.password}",
@@ -91,6 +91,6 @@ provisioner "shell" {
     ]
   }
 
-  
+
 
 }
