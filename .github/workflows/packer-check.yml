@@ -18,12 +18,31 @@ jobs:
         with:
           version: latest
 
+      - name: Ensure Packer Directory Exists
+        run: |
+          mkdir -p webapp/packer
+
+      - name: Create Packer Variables File
+        run: |
+          cat <<EOF > webapp/packer/variables.pkrvars.hcl
+          aws_region        = "${{ secrets.AWS_REGION }}"
+          aws_instance_type = "${{ secrets.AWS_INSTANCE_TYPE }}"
+          source_ami        = "${{ secrets.SOURCE_AMI }}"
+          subnet_id         = "${{ secrets.SUBNET_ID }}"
+          gcp_project_id    = "${{ secrets.GCP_PROJECT_ID }}"
+          gcp_region        = "${{ secrets.GCP_REGION }}"
+          source_gcp        = "${{ secrets.SOURCE_GCP }}"
+          ssh_username      = "${{ secrets.SSH_USERNAME }}"
+          password          = "${{ secrets.PASSWORD }}"
+          database_name     = "${{ secrets.DATABASE_NAME }}"
+          EOF
+
       - name: Run packer fmt
         run: |
-          cd packer
+          cd webapp/packer
           packer fmt -check -diff .
 
       - name: Run packer validate
         run: |
-          cd packer
+          cd webapp/packer
           packer validate -var-file=variables.pkrvars.hcl
