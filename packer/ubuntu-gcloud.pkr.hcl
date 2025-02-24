@@ -33,6 +33,7 @@ build {
     inline = [
       "export DEBIAN_FRONTEND=noninteractive",
       "sudo apt update -y",
+      "sudo apt upgrade -y",
       "sudo apt install -y --no-install-recommends apt-utils",
       "sudo apt install -y --no-install-recommends postgresql postgresql-contrib unzip",
       "curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -",

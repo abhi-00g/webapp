@@ -13,12 +13,12 @@ variable "source_ami" {
   default = "ami-02f9afd340e6c0065"
 }
 
-variable "subnet_id" {  
-  type    = string
+variable "subnet_id" {
+  type = string
 }
 
 #variable "service_account_email" {  
- # type    = string
+# type    = string
 #}
 
 variable "ssh_username" {

@@ -1,0 +1,29 @@
+name: Packer Status Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  packer-format-validate:
+    name: packer-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: latest
+
+      - name: Run packer fmt
+        run: |
+          cd packer
+          packer fmt -check -diff .
+
+      - name: Run packer validate
+        run: |
+          cd packer
+          packer validate -var-file=variables.pkrvars.hcl
