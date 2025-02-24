@@ -1,0 +1,16 @@
+#!/bin/bash
+
+echo "Extracting application files..."
+sudo unzip -o "/tmp/webapp.zip" -d "/opt"
+
+echo "Setting correct permissions..."
+sudo chown -R csye6225:csye6225 /opt/webapp
+sudo chmod -R 750 /opt/webapp
+
+echo "Switching to application user and installing dependencies..."
+sudo -u csye6225 bash -c "
+  cd /opt/webapp || exit 1
+  npm install
+"
+
+echo "Application files extracted and dependencies installed."

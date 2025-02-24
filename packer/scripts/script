@@ -1,0 +1,26 @@
+#!/bin/bash
+
+echo "Setting up systemd service for the web application..."
+
+# Ensure the service file exists before copying
+if [ ! -f "/tmp/webapp.service" ]; then
+    echo "Error: webapp.service file not found in /tmp"
+    exit 1
+fi
+
+# Copy service file
+sudo cp /tmp/webapp.service /etc/systemd/system/webapp.service
+
+# Ensure permissions are set correctly
+sudo chmod 644 /etc/systemd/system/webapp.service
+
+# Reload systemd to recognize the new service
+sudo systemctl daemon-reload
+
+# Enable the service so it starts on boot
+sudo systemctl enable webapp
+
+# Start the service
+sudo systemctl start webapp
+
+echo "Webapp service setup complete."
