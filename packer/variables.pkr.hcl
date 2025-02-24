@@ -10,18 +10,16 @@ variable "aws_instance_type" {
 
 variable "source_ami" {
   type    = string
-  default = "ami-05295e614f3f04be4"
+  default = "ami-02f9afd340e6c0065"
 }
 
 variable "subnet_id" {  
   type    = string
-  description = "The AWS subnet where the instance will be launched"
 }
 
-variable "service_account_email" {  
-  type    = string
-  description = "The service account email used for authentication (if applicable)"
-}
+#variable "service_account_email" {  
+ # type    = string
+#}
 
 variable "ssh_username" {
   type    = string
@@ -35,4 +33,22 @@ variable "password" {
 variable "database_name" {
   type    = string
   default = "health-check_db"
+}
+
+variable "gcp_project_id" {
+  type = string
+}
+
+variable "gcp_region" {
+  type    = string
+  default = "us-east4"
+}
+
+variable "machine_type" {
+  type    = string
+  default = "e2-small"
+}
+
+variable "source_gcp" {
+  type = string
 }
