@@ -1,0 +1,24 @@
+#!/bin/bash
+
+echo "Starting PostgreSQL service..."
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
+
+echo "Waiting for PostgreSQL to start..."
+sleep 10
+
+# Ensure variables are set
+if [ -z "$DB_PASSWORD" ] || [ -z "$DB_NAME" ]; then
+  echo "Error: Missing required database password variable!"
+  exit 1
+fi
+
+echo "Creating database"
+sudo -u postgres psql <<EOF
+ALTER USER postgres WITH PASSWORD '$DB_PASSWORD';
+GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
+ALTER USER postgres WITH SUPERUSER;
+CREATE DATABASE health_check_db;
+EOF
+
+echo "PostgreSQL database configured successfully!"
