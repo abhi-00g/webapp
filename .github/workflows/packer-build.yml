@@ -1,0 +1,166 @@
+name: Packer Build Workflow
+
+on:
+  pull_request:
+    types: [closed]
+
+env:
+  PACKER_VERSION: "1.10.0"
+
+jobs:
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    env:
+      DB_NAME: ${{secrets.DB_NAME}}
+      DB_PORT: ${{secrets.DB_PORT}}
+      DB_HOST: ${{secrets.DB_HOST}}
+      DB_USER: ${{secrets.DB_USER}}
+      DB_PASSWORD: ${{secrets.DB_PASSWORD}}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setting up PostgreSQL
+      run: |
+        sudo apt update
+        sudo apt install -y postgresql postgresql-contrib
+        sudo systemctl start postgresql
+
+    - name: Configure PostgreSQL User and Database
+      run: |
+        sudo -i -u postgres psql <<EOF
+        ALTER USER postgres WITH PASSWORD '${{ secrets.DB_PASSWORD }}';
+        GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
+        ALTER USER postgres WITH SUPERUSER;
+        CREATE DATABASE health_check_db;
+        EOF    
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+          node-version: '18.x'
+    
+    - name: Install Node.js dependencies
+      run: npm install
+    
+    - name: Running tests
+      run: npx jest tests/HealthCheck.test.js
+
+  build-artifact:
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          cat <<EOF > .env
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_PORT=${{ secrets.DB_PORT }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          EOF
+
+      - name: Zip project artifact
+        run: zip -r webapp.zip .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: webapp
+          path: webapp.zip
+
+  build-aws-ami:
+    needs: build-artifact
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: webapp
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Run packer init
+        working-directory: packer
+        run: packer init ubuntu-aws.pkr.hcl
+
+      - name: Run packer validate
+        working-directory: packer
+        run: packer validate ubuntu-aws.pkr.hcl
+
+      - name: Build AWS AMI
+        working-directory: packer
+        run: |
+          packer build \
+            -var "aws_region=${{ secrets.AWS_REGION }}" \
+            -var "aws_instance_type=${{ secrets.AWS_INSTANCE_TYPE }}" \
+            -var "source_ami=${{ secrets.SOURCE_AMI }}" \
+            -var "subnet_id=${{ secrets.AWS_SUBNET_ID }}" \
+            -var "ssh_username=${{ secrets.SSH_USERNAME }}" \
+            -var "password=${{ secrets.DB_PASSWORD }}" \
+            -var "database_name=${{ secrets.DB_NAME }}" \
+            ubuntu-aws.pkr.hcl
+
+  build-gcp-image:
+    needs: build-artifact
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: webapp
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Run packer init
+        working-directory: packer
+        run: packer init ubuntu-gcloud.pkr.hcl
+
+      - name: Run packer validate
+        working-directory: packer
+        run: packer validate ubuntu-gcloud.pkr.hcl
+
+      - name: Build GCP Image
+        working-directory: packer
+        run: |
+          packer build \
+            -var "gcp_project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var "gcp_region=${{ secrets.GCP_REGION }}" \
+            -var "machine_type=${{ secrets.GCP_MACHINE_TYPE }}" \
+            -var "source_gcp=${{ secrets.GCP_SOURCE_IMAGE }}" \
+            -var "ssh_username=${{ secrets.SSH_USERNAME }}" \
+            -var "password=${{ secrets.DB_PASSWORD }}" \
+            -var "database_name=${{ secrets.DB_NAME }}" \
+            ubuntu-gcloud.pkr.hcl
