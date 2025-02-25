@@ -105,21 +105,28 @@ jobs:
         run: packer init ubuntu-aws.pkr.hcl
 
       - name: Run packer validate
+        env:
+          PKR_VAR_aws_region: ${{ secrets.AWS_REGION }}
+          PKR_VAR_aws_instance_type: ${{ secrets.AWS_INSTANCE_TYPE }}
+          PKR_VAR_source_ami: ${{ secrets.SOURCE_AMI }}
+          PKR_VAR_subnet_id: ${{ secrets.AWS_SUBNET_ID }}
+          PKR_VAR_ssh_username: ${{ secrets.SSH_USERNAME }}
+          PKR_VAR_password: ${{ secrets.DB_PASSWORD }}
+          PKR_VAR_database_name: ${{ secrets.DB_NAME }}
         working-directory: packer
         run: packer validate ubuntu-aws.pkr.hcl
 
       - name: Build AWS AMI
+        env:
+          PKR_VAR_aws_region: ${{ secrets.AWS_REGION }}
+          PKR_VAR_aws_instance_type: ${{ secrets.AWS_INSTANCE_TYPE }}
+          PKR_VAR_source_ami: ${{ secrets.SOURCE_AMI }}
+          PKR_VAR_subnet_id: ${{ secrets.AWS_SUBNET_ID }}
+          PKR_VAR_ssh_username: ${{ secrets.SSH_USERNAME }}
+          PKR_VAR_password: ${{ secrets.DB_PASSWORD }}
+          PKR_VAR_database_name: ${{ secrets.DB_NAME }}
         working-directory: packer
-        run: |
-          packer build \
-            -var "aws_region=${{ secrets.AWS_REGION }}" \
-            -var "aws_instance_type=${{ secrets.AWS_INSTANCE_TYPE }}" \
-            -var "source_ami=${{ secrets.SOURCE_AMI }}" \
-            -var "subnet_id=${{ secrets.AWS_SUBNET_ID }}" \
-            -var "ssh_username=${{ secrets.SSH_USERNAME }}" \
-            -var "password=${{ secrets.DB_PASSWORD }}" \
-            -var "database_name=${{ secrets.DB_NAME }}" \
-            ubuntu-aws.pkr.hcl
+        run: packer build ubuntu-aws.pkr.hcl
 
   build-gcp-image:
     needs: build-artifact
@@ -149,18 +156,25 @@ jobs:
         run: packer init ubuntu-gcloud.pkr.hcl
 
       - name: Run packer validate
+        env:
+          PKR_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          PKR_VAR_gcp_region: ${{ secrets.GCP_REGION }}
+          PKR_VAR_machine_type: ${{ secrets.GCP_MACHINE_TYPE }}
+          PKR_VAR_source_gcp: ${{ secrets.GCP_SOURCE_IMAGE }}
+          PKR_VAR_ssh_username: ${{ secrets.SSH_USERNAME }}
+          PKR_VAR_password: ${{ secrets.DB_PASSWORD }}
+          PKR_VAR_database_name: ${{ secrets.DB_NAME }}
         working-directory: packer
         run: packer validate ubuntu-gcloud.pkr.hcl
 
       - name: Build GCP Image
+        env:
+          PKR_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          PKR_VAR_gcp_region: ${{ secrets.GCP_REGION }}
+          PKR_VAR_machine_type: ${{ secrets.GCP_MACHINE_TYPE }}
+          PKR_VAR_source_gcp: ${{ secrets.GCP_SOURCE_IMAGE }}
+          PKR_VAR_ssh_username: ${{ secrets.SSH_USERNAME }}
+          PKR_VAR_password: ${{ secrets.DB_PASSWORD }}
+          PKR_VAR_database_name: ${{ secrets.DB_NAME }}
         working-directory: packer
-        run: |
-          packer build \
-            -var "gcp_project_id=${{ secrets.GCP_PROJECT_ID }}" \
-            -var "gcp_region=${{ secrets.GCP_REGION }}" \
-            -var "machine_type=${{ secrets.GCP_MACHINE_TYPE }}" \
-            -var "source_gcp=${{ secrets.GCP_SOURCE_IMAGE }}" \
-            -var "ssh_username=${{ secrets.SSH_USERNAME }}" \
-            -var "password=${{ secrets.DB_PASSWORD }}" \
-            -var "database_name=${{ secrets.DB_NAME }}" \
-            ubuntu-gcloud.pkr.hcl
+        run: packer build ubuntu-gcloud.pkr.hcl
