@@ -7,7 +7,7 @@ APP_DIR="/opt/webapp"
 
 echo "Creating user and group..."
 sudo groupadd -f $APP_GROUP
-sudo id -u $APP_USER &>/dev/null || sudo useradd -m -g $APP_GROUP -s /bin/bash $APP_USER
+sudo id -u $APP_USER &>/dev/null || sudo useradd -m -g $APP_GROUP -s /usr/sbin/nologin $APP_USER
 
 echo "Setting ownership and permissions for $APP_DIR..."
 sudo mkdir -p "$APP_DIR"
