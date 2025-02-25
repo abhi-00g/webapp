@@ -18,47 +18,28 @@ jobs:
         with:
           version: latest
 
-      - name: Ensure packer directory exists
-        run: mkdir -p packer
-
-      - name: Generate variables.pkrvars.hcl
-        run: |
-          set -e  # Exit immediately if any command fails
-
-          # Ensure secrets are not empty (fail early if missing)
-          : "${{ secrets.AWS_REGION?Missing AWS_REGION secret }}"
-          : "${{ secrets.AWS_INSTANCE_TYPE?Missing AWS_INSTANCE_TYPE secret }}"
-          : "${{ secrets.SOURCE_AMI?Missing SOURCE_AMI secret }}"
-          : "${{ secrets.SUBNET_ID?Missing SUBNET_ID secret }}"
-          : "${{ secrets.SSH_USERNAME?Missing SSH_USERNAME secret }}"
-          : "${{ secrets.DB_PASSWORD?Missing DB_PASSWORD secret }}"
-          : "${{ secrets.DB_NAME?Missing DB_NAME secret }}"
-          : "${{ secrets.GCP_PROJECT_ID?Missing GCP_PROJECT_ID secret }}"
-          : "${{ secrets.GCP_REGION?Missing GCP_REGION secret }}"
-          : "${{ secrets.MACHINE_TYPE?Missing MACHINE_TYPE secret }}"
-          : "${{ secrets.SOURCE_GCP?Missing SOURCE_GCP secret }}"
-
-          # Write the variables.pkrvars.hcl file properly (Fixing Indentation)
-          cat <<EOF > packer/variables.pkrvars.hcl
-aws_region        = "${{ secrets.AWS_REGION }}"
-aws_instance_type = "${{ secrets.AWS_INSTANCE_TYPE }}"
-source_ami       = "${{ secrets.SOURCE_AMI }}"
-subnet_id        = "${{ secrets.SUBNET_ID }}"
-ssh_username     = "${{ secrets.SSH_USERNAME }}"
-password         = "${{ secrets.DB_PASSWORD }}"
-database_name    = "${{ secrets.DB_NAME }}"
-gcp_project_id   = "${{ secrets.GCP_PROJECT_ID }}"
-gcp_region       = "${{ secrets.GCP_REGION }}"
-machine_type     = "${{ secrets.MACHINE_TYPE }}"
-source_gcp       = "${{ secrets.SOURCE_GCP }}"
-EOF
-
       - name: Run packer fmt
         run: |
           cd packer
           packer fmt -check -diff .
 
-      - name: Run packer validate
+      - name: Run packer init
         run: |
           cd packer
-          packer validate -var-file=variables.pkrvars.hcl
+          packer init .
+
+      - name: Run packer validate
+        env:
+          PKR_VAR_aws_region: ${{ secrets.AWS_REGION }}
+          PKR_VAR_aws_instance_type: ${{ secrets.AWS_INSTANCE_TYPE }}
+          PKR_VAR_source_ami: ${{ secrets.SOURCE_AMI }}
+          PKR_VAR_subnet_id: ${{ secrets.SUBNET_ID }}
+          PKR_VAR_ssh_username: ${{ secrets.SSH_USERNAME }}
+          PKR_VAR_password: ${{ secrets.DB_PASSWORD }}
+          PKR_VAR_database_name: ${{ secrets.DB_NAME }}
+          PKR_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          PKR_VAR_gcp_region: ${{ secrets.GCP_REGION }}
+          PKR_VAR_source_gcp: ${{ secrets.SOURCE_GCP }}
+        run: |
+          cd packer
+          packer validate .
