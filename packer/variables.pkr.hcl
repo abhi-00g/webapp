@@ -14,7 +14,7 @@ variable "source_ami" {
 }
 
 variable "subnet_id" {
-  type = string
+  type    = string
   default = ""
 }
 
@@ -28,7 +28,7 @@ variable "ssh_username" {
 }
 
 variable "password" {
-  type = string
+  type    = string
   default = ""
 }
 
@@ -38,7 +38,7 @@ variable "database_name" {
 }
 
 variable "gcp_project_id" {
-  type = string
+  type    = string
   default = ""
 }
 
@@ -53,6 +53,6 @@ variable "machine_type" {
 }
 
 variable "source_gcp" {
-  type = string
+  type    = string
   default = ""
 }
