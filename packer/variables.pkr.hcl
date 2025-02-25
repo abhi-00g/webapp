@@ -1,20 +1,21 @@
 variable "aws_region" {
   type    = string
-  default = "us-east-1"
+  default = ""
 }
 
 variable "aws_instance_type" {
   type    = string
-  default = "t2.micro"
+  default = ""
 }
 
 variable "source_ami" {
   type    = string
-  default = "ami-02f9afd340e6c0065"
+  default = ""
 }
 
 variable "subnet_id" {
   type = string
+  default = ""
 }
 
 #variable "service_account_email" {  
@@ -23,32 +24,35 @@ variable "subnet_id" {
 
 variable "ssh_username" {
   type    = string
-  default = "ubuntu"
+  default = ""
 }
 
 variable "password" {
   type = string
+  default = ""
 }
 
 variable "database_name" {
   type    = string
-  default = "health-check_db"
+  default = ""
 }
 
 variable "gcp_project_id" {
   type = string
+  default = ""
 }
 
 variable "gcp_region" {
   type    = string
-  default = "us-east4"
+  default = ""
 }
 
 variable "machine_type" {
   type    = string
-  default = "e2-small"
+  default = ""
 }
 
 variable "source_gcp" {
   type = string
+  default = ""
 }
