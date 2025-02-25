@@ -19,34 +19,34 @@ jobs:
       DB_PASSWORD: ${{secrets.DB_PASSWORD}}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setting up PostgreSQL
-      run: |
-        sudo apt update
-        sudo apt install -y postgresql postgresql-contrib
-        sudo systemctl start postgresql
+      - name: Setting up PostgreSQL
+        run: |
+          sudo apt update
+          sudo apt install -y postgresql postgresql-contrib
+          sudo systemctl start postgresql
 
-    - name: Configure PostgreSQL User and Database
-      run: |
-        sudo -i -u postgres psql <<EOF
-        ALTER USER postgres WITH PASSWORD '${{ secrets.DB_PASSWORD }}';
-        GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
-        ALTER USER postgres WITH SUPERUSER;
-        CREATE DATABASE health_check_db;
-        EOF    
+      - name: Configure PostgreSQL User and Database
+        run: |
+          sudo -i -u postgres psql <<EOF
+          ALTER USER postgres WITH PASSWORD '${{ secrets.DB_PASSWORD }}';
+          GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
+          ALTER USER postgres WITH SUPERUSER;
+          CREATE DATABASE health_check_db;
+          EOF
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-          node-version: '18.x'
-    
-    - name: Install Node.js dependencies
-      run: npm install
-    
-    - name: Running tests
-      run: npx jest tests/HealthCheck.test.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.x"
+
+      - name: Install Node.js dependencies
+        run: npm install
+
+      - name: Running tests
+        run: npx jest tests/HealthCheck.test.js
 
   build-artifact:
     needs: integration-tests
@@ -70,7 +70,7 @@ jobs:
         run: zip -r webapp.zip .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: webapp
           path: webapp.zip
@@ -84,12 +84,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: webapp
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -130,12 +130,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: webapp
 
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
