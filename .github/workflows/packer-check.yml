@@ -40,6 +40,7 @@ jobs:
           PKR_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
           PKR_VAR_gcp_region: ${{ secrets.GCP_REGION }}
           PKR_VAR_source_gcp: ${{ secrets.SOURCE_GCP }}
+          PKR_VAR_machine_type: ${{ secrets.MACHINE_TYPE }}
         run: |
           cd packer
           packer validate .
