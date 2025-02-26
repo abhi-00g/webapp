@@ -7,18 +7,37 @@ sudo systemctl start postgresql
 echo "Waiting for PostgreSQL to start..."
 sleep 10
 
-# Ensure variables are set
-if [ -z "$DB_PASSWORD" ] || [ -z "$DB_NAME" ]; then
-  echo "Error: Missing required database password variable!"
-  exit 1
-fi
-
-echo "Creating database"
-sudo -u postgres psql <<EOF
-ALTER USER postgres WITH PASSWORD '$DB_PASSWORD';
-GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
-ALTER USER postgres WITH SUPERUSER;
-CREATE DATABASE health_check_db;
+# Create and write the .env file securely
+echo "Creating .env file..."
+cat <<EOF | sudo tee /opt/webapp/.env > /dev/null
+DATABASE=${DB_NAME}
+USERNAME=${DB_USER}
+PASSWORD=${DB_PASSWORD}
+HOST=${DB_HOST}
+PORT=${DB_PORT}
 EOF
 
-echo "PostgreSQL database configured successfully!"
+# Secure the .env file
+sudo chmod 600 /opt/webapp/.env
+sudo chown csye6225:csye6225 /opt/webapp/.env
+echo ".env file created and secured."
+
+echo "Database environment variables saved securely."
+
+echo "Configuring PostgreSQL Database..."
+# Check if database exists before creating
+DB_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'")
+if [ "$DB_EXISTS" != "1" ]; then
+    echo "Creating database $DB_NAME"
+    sudo -u postgres psql -c "CREATE DATABASE $DB_NAME;"
+else
+    echo "Database $DB_NAME already exists"
+fi
+
+# Set password for postgres user
+sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '$DB_PASSWORD';"
+
+# Grant privileges
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO postgres;"
+
+echo "Database setup complete."

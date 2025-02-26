@@ -1,58 +1,90 @@
 variable "aws_region" {
   type    = string
-  default = ""
+  default = "us-east-1"
 }
 
 variable "aws_instance_type" {
   type    = string
-  default = ""
+  default = "t2.micro"
 }
 
 variable "source_ami" {
   type    = string
-  default = ""
+  default = "ami-02f9afd340e6c0065"
 }
 
 variable "subnet_id" {
   type    = string
-  default = ""
+  default = "subnet-008492f12b655d5f0"
 }
 
-#variable "service_account_email" {  
-# type    = string
-#}
+variable "service_account_email" {
+  type    = string
+  default = "gcp-service"
+}
+
 
 variable "ssh_username" {
   type    = string
-  default = ""
+  default = "ubuntu"
 }
 
-variable "password" {
+variable "db_password" {
   type    = string
-  default = ""
+  default = "password"
 }
 
-variable "database_name" {
+variable "db_name" {
   type    = string
-  default = ""
+  default = "health_check_db"
 }
 
 variable "gcp_project_id" {
   type    = string
-  default = ""
+  default = "dev_project"
 }
 
 variable "gcp_region" {
   type    = string
-  default = ""
+  default = "us-east-4"
 }
 
 variable "machine_type" {
   type    = string
-  default = ""
+  default = "e2-small"
 }
 
 variable "source_gcp" {
   type    = string
-  default = ""
+  default = "ubuntu-2204-lts"
+}
+
+variable "gcp_zone" {
+  type    = string
+  default = "c"
+}
+
+variable "db_host" {
+  type    = string
+  default = "host"
+}
+
+variable "db_port" {
+  type    = number
+  default = 54331
+}
+
+variable "db_username" {
+  type    = string
+  default = "postgres"
+}
+
+variable "profile" {
+  type    = string
+  default = "dev"
+}
+
+variable "webapp_path" {
+  type    = string
+  default = "./webapp.zip"
 }
