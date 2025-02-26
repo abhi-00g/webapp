@@ -112,3 +112,4 @@ jobs:
             -var "gcp_zone=${{ secrets.GCP_ZONE }}" \
             -var "machine_type=${{ secrets.MACHINE_TYPE }}" \
             -var "service_account_email=${{ env.GCP_EMAIL }}" \
+            .
