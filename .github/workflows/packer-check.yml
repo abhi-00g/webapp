@@ -29,18 +29,6 @@ jobs:
           packer init .
 
       - name: Run packer validate
-        env:
-          PKR_VAR_aws_region: ${{ secrets.AWS_REGION }}
-          PKR_VAR_aws_instance_type: ${{ secrets.AWS_INSTANCE_TYPE }}
-          PKR_VAR_source_ami: ${{ secrets.SOURCE_AMI }}
-          PKR_VAR_subnet_id: ${{ secrets.SUBNET_ID }}
-          PKR_VAR_ssh_username: ${{ secrets.SSH_USERNAME }}
-          PKR_VAR_password: ${{ secrets.DB_PASSWORD }}
-          PKR_VAR_database_name: ${{ secrets.DB_NAME }}
-          PKR_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          PKR_VAR_gcp_region: ${{ secrets.GCP_REGION }}
-          PKR_VAR_source_gcp: ${{ secrets.SOURCE_GCP }}
-          PKR_VAR_machine_type: ${{ secrets.MACHINE_TYPE }}
         run: |
           cd packer
           packer validate .

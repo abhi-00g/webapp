@@ -1,92 +1,25 @@
-name: Packer Build Workflow
+name: CI Packer Build 
 
 on:
-  pull_request:
-    types: [closed]
+  push:
+    branches:
+      - main
 
 env:
-  PACKER_VERSION: "1.10.0"
+  PACKER_VERSION: "1.12.0"
 
 jobs:
-  integration-tests:
-    name: Integration Tests
+  build-images:
+    name: Packer Build
     runs-on: ubuntu-latest
-    env:
-      DB_NAME: ${{secrets.DB_NAME}}
-      DB_PORT: ${{secrets.DB_PORT}}
-      DB_HOST: ${{secrets.DB_HOST}}
-      DB_USER: ${{secrets.DB_USER}}
-      DB_PASSWORD: ${{secrets.DB_PASSWORD}}
-
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setting up PostgreSQL
-        run: |
-          sudo apt update
-          sudo apt install -y postgresql postgresql-contrib
-          sudo systemctl start postgresql
-
-      - name: Configure PostgreSQL User and Database
-        run: |
-          sudo -i -u postgres psql <<EOF
-          ALTER USER postgres WITH PASSWORD '${{ secrets.DB_PASSWORD }}';
-          GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
-          ALTER USER postgres WITH SUPERUSER;
-          CREATE DATABASE health_check_db;
-          EOF
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
         with:
-          node-version: "18.x"
-
-      - name: Install Node.js dependencies
-        run: npm install
-
-      - name: Running tests
-        run: npx jest tests/HealthCheck.test.js
-
-  build-artifact:
-    needs: integration-tests
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Create .env file
-        run: |
-          cat <<EOF > .env
-          DB_HOST=${{ secrets.DB_HOST }}
-          DB_PORT=${{ secrets.DB_PORT }}
-          DB_NAME=${{ secrets.DB_NAME }}
-          DB_USER=${{ secrets.DB_USER }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          EOF
-
-      - name: Zip project artifact
-        run: zip -r webapp.zip .
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: webapp
-          path: webapp.zip
-
-  build-aws-ami:
-    needs: build-artifact
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: webapp
+          version: ${{ env.PACKER_VERSION }}
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -95,86 +28,64 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Setup Packer
-        uses: hashicorp/setup-packer@main
-        with:
-          version: ${{ env.PACKER_VERSION }}
-
-      - name: Run packer init
-        working-directory: packer
-        run: packer init ubuntu-aws.pkr.hcl
-
-      - name: Run packer validate
-        working-directory: packer
-        run: |
-          packer validate -var "aws_region=${{ secrets.AWS_REGION }}" \
-                          -var "aws_instance_type=${{ secrets.AWS_INSTANCE_TYPE }}" \
-                          -var "source_ami=${{ secrets.SOURCE_AMI }}" \
-                          -var "subnet_id=${{ secrets.AWS_SUBNET_ID }}" \
-                          -var "ssh_username=${{ secrets.SSH_USERNAME }}" \
-                          -var "password=${{ secrets.DB_PASSWORD }}" \
-                          -var "database_name=${{ secrets.DB_NAME }}" \
-                          ubuntu-aws.pkr.hcl
-
-      - name: Build AWS AMI
-        working-directory: packer
-        run: |
-          packer build -var "aws_region=${{ secrets.AWS_REGION }}" \
-                       -var "aws_instance_type=${{ secrets.AWS_INSTANCE_TYPE }}" \
-                       -var "source_ami=${{ secrets.SOURCE_AMI }}" \
-                       -var "subnet_id=${{ secrets.AWS_SUBNET_ID }}" \
-                       -var "ssh_username=${{ secrets.SSH_USERNAME }}" \
-                       -var "password=${{ secrets.DB_PASSWORD }}" \
-                       -var "database_name=${{ secrets.DB_NAME }}" \
-                       ubuntu-aws.pkr.hcl
-
-  build-gcp-image:
-    needs: build-artifact
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: webapp
-
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
-      - name: Setup Packer
-        uses: hashicorp/setup-packer@main
-        with:
-          version: ${{ env.PACKER_VERSION }}
+      - name: Extract GCP Service Account Email
+        run: |
+          GCP_EMAIL=$(jq -r '.client_email' <<< '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}')
+          echo "GCP_EMAIL=$GCP_EMAIL" >> $GITHUB_ENV    
 
-      - name: Run packer init
+      - name: Run Integration Tests
+        run: |
+          sudo apt update
+          sudo apt install -y postgresql postgresql-contrib
+          sudo systemctl start postgresql
+          
+          sudo -i -u postgres psql <<EOF
+          ALTER USER postgres WITH PASSWORD '${{ secrets.DB_PASSWORD }}';
+          GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
+          ALTER USER postgres WITH SUPERUSER;
+          CREATE DATABASE health_check_db;
+          EOF
+
+          npm install
+          npx jest tests/HealthCheck.test.js
+
+      - name: Build Application Artifact
+        run: zip -r webapp.zip .
+        working-directory: .
+
+      - name: Initialize Packer
         working-directory: packer
-        run: packer init ubuntu-gcloud.pkr.hcl
+        run: packer init .
 
-      - name: Run packer validate
+      - name: Validate Packer Templates
         working-directory: packer
         run: |
-          packer validate -var "gcp_project_id=${{ secrets.GCP_PROJECT_ID }}" \
-                          -var "gcp_region=${{ secrets.GCP_REGION }}" \
-                          -var "machine_type=${{ secrets.GCP_MACHINE_TYPE }}" \
-                          -var "source_gcp=${{ secrets.GCP_SOURCE_IMAGE }}" \
-                          -var "ssh_username=${{ secrets.SSH_USERNAME }}" \
-                          -var "password=${{ secrets.DB_PASSWORD }}" \
-                          -var "database_name=${{ secrets.DB_NAME }}" \
-                          ubuntu-gcloud.pkr.hcl
+          cd packer
+          packer validate .
 
-      - name: Build GCP Image
+      - name: Build AWS & GCP Images
         working-directory: packer
         run: |
-          packer build -var "gcp_project_id=${{ secrets.GCP_PROJECT_ID }}" \
-                       -var "gcp_region=${{ secrets.GCP_REGION }}" \
-                       -var "machine_type=${{ secrets.GCP_MACHINE_TYPE }}" \
-                       -var "source_gcp=${{ secrets.GCP_SOURCE_IMAGE }}" \
-                       -var "ssh_username=${{ secrets.SSH_USERNAME }}" \
-                       -var "password=${{ secrets.DB_PASSWORD }}" \
-                       -var "database_name=${{ secrets.DB_NAME }}" \
-                       ubuntu-gcloud.pkr.hcl
+          packer build \
+            -var "webapp_path=$(pwd)/webapp.zip" \
+            -var "aws_region=${{ secrets.AWS_REGION }}" \
+            -var "aws_instance_type=${{ secrets.AWS_INSTANCE_TYPE }}" \
+            -var "source_ami=${{ secrets.SOURCE_AMI }}" \
+            -var "profile=${{ secrets.PROFILE }}" \
+            -var "subnet_id=${{ secrets.SUBNET_ID }}" \
+            -var "ssh_username=${{ secrets.SSH_USERNAME }}" \
+            -var "db_name=${{ secrets.DB_NAME }}" \
+            -var "db_username=${{ secrets.DB_USER }}" \
+            -var "db_password=${{ secrets.DB_PASSWORD }}" \
+            -var "db_host=${{ secrets.DB_HOST }}" \
+            -var "db_port=${{ secrets.DB_PORT }}" \
+            -var "gcp_project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var "gcp_region=${{ secrets.GCP_REGION }}" \
+            -var "gcp_zone=${{ secrets.GCP_ZONE }}" \
+            -var "machine_type=${{ secrets.MACHINE_TYPE }}" \
+            -var "service_account_email=${{ env.GCP_EMAIL }}" \
