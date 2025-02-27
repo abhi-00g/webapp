@@ -10,11 +10,11 @@ sleep 10
 # Create and write the .env file securely
 echo "Creating .env file..."
 cat <<EOF | sudo tee /opt/webapp/.env > /dev/null
-DATABASE=${DB_NAME}
-USERNAME=${DB_USER}
-PASSWORD=${DB_PASSWORD}
-HOST=${DB_HOST}
-PORT=${DB_PORT}
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASSWORD=${DB_PASSWORD}
+DB_HOST=${DB_HOST}
+DB_PORT=${DB_PORT}
 EOF
 
 # Secure the .env file
