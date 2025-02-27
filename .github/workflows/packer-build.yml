@@ -1,4 +1,4 @@
-name: CI Packer Build 
+name: CI Packer Build
 
 on:
   push:
@@ -36,21 +36,22 @@ jobs:
           GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
           ALTER USER postgres WITH SUPERUSER;
           CREATE DATABASE health_check_db;
-          EOF    
+          EOF
 
       - name: Set up Node.js using GitHub Action
         uses: actions/setup-node@v3
         with:
-          node-version: '18.x'
-    
+          node-version: "18.x"
+
       - name: Install Node.js dependencies
         run: npm install
-    
+
       - name: Running tests
         run: npx jest tests/HealthCheck.test.js
 
   build-images:
     name: Packer Build
+    needs: integration-test
     runs-on: ubuntu-latest
 
     steps:
@@ -77,7 +78,7 @@ jobs:
       - name: Extract GCP Service Account Email
         run: |
           GCP_EMAIL=$(jq -r '.client_email' <<< '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}')
-          echo "GCP_EMAIL=$GCP_EMAIL" >> $GITHUB_ENV    
+          echo "GCP_EMAIL=$GCP_EMAIL" >> $GITHUB_ENV
 
       - name: Build Application Artifact
         working-directory: .
