@@ -32,5 +32,4 @@ To build a cloud-native backend application
 4. We then run the application and perform testing
 5. The command node tests/HealthCheck.test.js will automate tests and tell us how many test cases passed and how many failed
 
-# testing
     
