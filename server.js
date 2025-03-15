@@ -20,6 +20,13 @@ app.get('/healthz', async(req,res) => {
             return res.status(400).send();
         }
 
+        // Check if the HealthCheck table exists
+        const tableExists = await sequelize.getQueryInterface().showAllTables();
+        if (!tableExists.includes('HealthChecks')) {
+            console.error('HealthCheck table does not exist. Returning 503.');
+            return res.status(503).send();
+        }
+
         //throw new Error('Simulated database error');
         await HealthCheck.create({
             datetime: new Date().toISOString(),
