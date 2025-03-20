@@ -1,22 +1,22 @@
-// const AWS = require('aws-sdk');
-// require('dotenv').config();
+const AWS = require('aws-sdk');
+require('dotenv').config();
 
-// const s3 = new AWS.S3({
-//     region: process.env.AWS_REGION || 'us-east-1',
-//     credentials: new AWS.EnvironmentCredentials('AWS'),
-// });
-
-// const BUCKET_NAME = process.env.AWS_BUCKET_NAME || 'your-s3-bucket-name';
-const { S3Client, DeleteObjectCommand } = require("@aws-sdk/client-s3");
-const { File } = require("../config/database");
-require("dotenv").config();
-
-const s3 = new S3Client({
-    region: process.env.AWS_REGION || "us-east-1"
-    // IAM Role will be used automatically
+const s3 = new AWS.S3({
+    region: process.env.AWS_REGION || 'us-east-1',
+    credentials: new AWS.EnvironmentCredentials('AWS'),
 });
 
-const BUCKET_NAME = process.env.AWS_BUCKET_NAME;
+const BUCKET_NAME = process.env.AWS_BUCKET_NAME || 'your-s3-bucket-name';
+// const { S3Client, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+// const { File } = require("../config/database");
+// require("dotenv").config();
+
+// const s3 = new S3Client({
+//     region: process.env.AWS_REGION || "us-east-1"
+//     // IAM Role will be used automatically
+// });
+
+// const BUCKET_NAME = process.env.AWS_BUCKET_NAME;
 
 
 /**
