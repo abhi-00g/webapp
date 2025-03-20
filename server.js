@@ -1,11 +1,21 @@
 const express = require('express');
+const multer = require('multer');
 const sequelize = require('./config/database');
+const File = require('./models/File');
+const { uploadFile, deleteFile } = require('./config/s3');
 const HealthCheck = require('./models/HealthCheck');
 
 const app = express();
+const router = express.Router();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+app.use('/v1', router);
 
 app.use('/healthz', express.text(), (req, res, next) => {
     if (req.get('Content-Length') && req.get('Content-Length') !== '0') {
@@ -42,10 +52,81 @@ app.get('/healthz', async(req,res) => {
     }
 });
 
+router.post('/file', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const s3_url = await uploadFile(req.file);
+        const fileRecord = await File.create({
+            file_name: req.file.originalname,
+            s3_url
+        });
+
+        res.status(201).json({
+            id: fileRecord.id,
+            file_name: fileRecord.file_name,
+            url: fileRecord.s3_url,
+            upload_date: fileRecord.upload_date
+        });
+    } catch (err) {
+        console.error('Upload error:', err);
+        res.status(503).json({ error: 'Server Unavailable' });
+    }
+});
+
+router.get('/file/:id', async (req, res) => {
+    try {
+        const file = await File.findByPk(req.params.id);
+
+        if (!file) {
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        res.json({
+            id: file.id,
+            file_name: file.file_name,
+            url: file.s3_url,
+            upload_date: file.upload_date
+            
+        });
+    } catch (err) {
+        console.error('Get file error:', err);
+        res.status(503).json({ error: 'Server Unavailable' });
+    }
+});
+
+router.delete('/file/:id', async (req, res) => {
+    try {
+        const file = await File.findByPk(req.params.id);
+
+        if (!file) {
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        await deleteFile(file.s3_url);
+        await file.destroy();
+
+        res.status(204).send();
+    } catch (err) {
+        console.error('Delete file error:', err);
+        res.status(503).json({ error: 'Server Unavailable' });
+    }
+});
+
 app.all('/healthz', (req, res) => {
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.status(405).send();
+});
+
+app.all('/v1/file', (req, res) => {
+    res.status(405).json({ error: 'Method Not Allowed' });
+});
+
+app.all('/v1/file/:id', (req, res) => {
+    res.status(405).json({ error: 'Method Not Allowed' });
 });
 
 module.exports = app;
@@ -93,10 +174,11 @@ async function start() {
     try{
         await sequelize.authenticate();
         console.log('Database connected successfully!!');
-        await sequelize.sync({alter: true});
+        //await sequelize.sync({alter: true});
+        await sequelize.sync({ alter: true, logging: console.log });
         console.log('Models synced to the database!');
         monitorConnection();
-        app.listen(PORT, () =>{
+        app.listen(PORT, () => {
             console.log(`Server is running on http://localhost:${PORT}`);
         });
     }
@@ -114,4 +196,3 @@ process.on('SIGINT', async () => {
 if (require.main === module) {
     start();
 }
-
