@@ -97,18 +97,27 @@ router.get('/file/:id', async (req, res) => {
     }
 });
 
+// router.delete('/file/:id', async (req, res) => {
+//     try {
+//         const file = await File.findByPk(req.params.id);
+
+//         if (!file) {
+//             return res.status(404).json({ error: 'File not found' });
+//         }
+
+//         await deleteFile(file.s3_url);
+//         await file.destroy();
+
+//         res.status(204).send();
+//     } catch (err) {
+//         console.error('Delete file error:', err);
+//         res.status(503).json({ error: 'Server Unavailable' });
+//     }
+// });
+
 router.delete('/file/:id', async (req, res) => {
     try {
-        const file = await File.findByPk(req.params.id);
-
-        if (!file) {
-            return res.status(404).json({ error: 'File not found' });
-        }
-
-        await deleteFile(file.s3_url);
-        await file.destroy();
-
-        res.status(204).send();
+        await deleteFile(req, res); // ✅ Correct function call
     } catch (err) {
         console.error('Delete file error:', err);
         res.status(503).json({ error: 'Server Unavailable' });

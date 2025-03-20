@@ -8,6 +8,7 @@ Type=simple
 User=csye6225
 Group=csye6225
 WorkingDirectory=/opt/webapp
+EnvironmentFile=/opt/webapp/.env 
 ExecStart=/usr/bin/node /opt/webapp/server.js
 Restart=always
 RestartSec=3

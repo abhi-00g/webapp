@@ -45,7 +45,7 @@ source "googlecompute" "gcp_image" {
 build {
   sources = [
     "source.amazon-ebs.aws_image",
-    "source.googlecompute.gcp_image"
+    //"source.googlecompute.gcp_image"
   ]
 
   provisioner "shell" {
