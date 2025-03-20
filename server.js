@@ -115,6 +115,15 @@ router.delete('/file/:id', async (req, res) => {
     }
 });
 
+// router.delete('/file/:id', async (req, res) => {
+//     try {
+//         await deleteFile(req, res); 
+//     } catch (err) {
+//         console.error('Delete file error:', err);
+//         res.status(503).json({ error: 'Server Unavailable' });
+//     }
+// });
+
 app.all('/healthz', (req, res) => {
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.set('Pragma', 'no-cache');
