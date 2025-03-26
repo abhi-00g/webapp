@@ -15,6 +15,10 @@ const File = sequelize.define('File', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    s3_key: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
     upload_date: {
         type: DataTypes.DATE,
         allowNull: false,

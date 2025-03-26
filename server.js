@@ -4,6 +4,7 @@ const sequelize = require('./config/database');
 const File = require('./models/File');
 const { uploadFile, deleteFile } = require('./config/s3');
 const HealthCheck = require('./models/HealthCheck');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const router = express.Router();
@@ -30,21 +31,21 @@ app.get('/healthz', async(req,res) => {
             return res.status(400).send();
         }
 
-        // Check if the HealthCheck table exists
         const tableExists = await sequelize.getQueryInterface().showAllTables();
         if (!tableExists.includes('HealthChecks')) {
             console.error('HealthCheck table does not exist. Returning 503.');
             return res.status(503).send();
         }
 
-        //throw new Error('Simulated database error');
         await HealthCheck.create({
             datetime: new Date().toISOString(),
         });
 
-        console.log('Health check record inserted successfully.')
-        res.status(200).set('Cache-Control', 'no-cache, no-store, must-revalidate')
-        .set('Pragma', 'no-cache').send();
+        console.log('Health check record inserted successfully.');
+        res.status(200)
+            .set('Cache-Control', 'no-cache, no-store, must-revalidate')
+            .set('Pragma', 'no-cache')
+            .send();
     }
     catch(err){
         console.error('Error during health check:', err);
@@ -58,10 +59,17 @@ router.post('/file', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        const s3_url = await uploadFile(req.file);
+        const fileId = uuidv4();
+        const fileName = req.file.originalname;
+        const key = `user-uploads/${fileId}-${fileName}`;
+
+        const s3_url = await uploadFile(req.file, key);
+
         const fileRecord = await File.create({
-            file_name: req.file.originalname,
-            s3_url
+            id: fileId,
+            file_name: fileName,
+            s3_url,
+            s3_key: key
         });
 
         res.status(201).json({
@@ -89,7 +97,6 @@ router.get('/file/:id', async (req, res) => {
             file_name: file.file_name,
             url: file.s3_url,
             upload_date: file.upload_date
-            
         });
     } catch (err) {
         console.error('Get file error:', err);
@@ -105,7 +112,7 @@ router.delete('/file/:id', async (req, res) => {
             return res.status(404).json({ error: 'File not found' });
         }
 
-        await deleteFile(file.s3_url);
+        await deleteFile(file.s3_key);
         await file.destroy();
 
         res.status(204).send();
@@ -114,15 +121,6 @@ router.delete('/file/:id', async (req, res) => {
         res.status(503).json({ error: 'Server Unavailable' });
     }
 });
-
-// router.delete('/file/:id', async (req, res) => {
-//     try {
-//         await deleteFile(req, res); 
-//     } catch (err) {
-//         console.error('Delete file error:', err);
-//         res.status(503).json({ error: 'Server Unavailable' });
-//     }
-// });
 
 app.all('/healthz', (req, res) => {
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -147,7 +145,7 @@ async function retryConnection(){
             await sequelize.authenticate();
             console.log('Database reconnected successfully!!');
 
-            await sequelize.sync({alter:true});
+            await sequelize.sync({ alter: true });
             console.log('Models synced to the database after reconnection!');
             return;
         }
@@ -183,7 +181,6 @@ async function start() {
     try{
         await sequelize.authenticate();
         console.log('Database connected successfully!!');
-        //await sequelize.sync({alter: true});
         await sequelize.sync({ alter: true, logging: console.log });
         console.log('Models synced to the database!');
         monitorConnection();
@@ -200,7 +197,7 @@ process.on('SIGINT', async () => {
     await sequelize.close();
     console.log('Database connection closed successfully!');
     process.exit(0);
-})
+});
 
 if (require.main === module) {
     start();
