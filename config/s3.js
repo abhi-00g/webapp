@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const s3 = new AWS.S3({
     region: process.env.AWS_REGION || 'us-east-1',
-    credentials: new AWS.EnvironmentCredentials('AWS'),
+    //credentials: new AWS.EnvironmentCredentials('AWS'),
 });
 
 const BUCKET_NAME = process.env.AWS_BUCKET_NAME || 'your-s3-bucket-name';
