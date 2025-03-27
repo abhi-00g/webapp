@@ -133,3 +133,4 @@ dist
 *.pkrvars.hcl
 *.pkr.hcl.backup
 packer.log
+*.zip
