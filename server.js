@@ -54,9 +54,7 @@ app.get('/healthz', async(req,res) => {
         }
 
         const start = Date.now();
-        await HealthCheck.create({
-            datetime: new Date().toISOString(),
-        });
+        await HealthCheck.create({ datetime: new Date().toISOString() });
         const dbTime = Date.now() - start;
         metrics.timing('db.insert.healthcheck', dbTime);
 
@@ -65,9 +63,9 @@ app.get('/healthz', async(req,res) => {
             .set('Cache-Control', 'no-cache, no-store, must-revalidate')
             .set('Pragma', 'no-cache')
             .send();
-    }
-    catch(err){
+    } catch(err) {
         logger.error('Error during health check:', err.stack);
+        metrics.increment('api.healthz.failed');
         res.status(503).send();
     }
 });
@@ -75,6 +73,7 @@ app.get('/healthz', async(req,res) => {
 router.post('/file', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
+            metrics.increment('api.upload.failure.no_file');
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
@@ -82,35 +81,64 @@ router.post('/file', upload.single('file'), async (req, res) => {
         const fileName = req.file.originalname;
         const key = `user-uploads/${fileId}-${fileName}`;
 
-        const start = Date.now();
-        const s3_url = await uploadFile(req.file, key);
-        const uploadTime = Date.now() - start;
-        metrics.timing('s3.upload.time', uploadTime);
+        const s3Start = Date.now();
+        let s3_url;
+        try {
+            s3_url = await uploadFile(req.file, key);
+            metrics.increment('s3.upload.success');
+        } catch (err) {
+            const s3Time = Date.now() - s3Start;
+            metrics.timing('s3.upload.time', s3Time);
+            metrics.increment('s3.upload.failure');
+            logger.error('S3 upload failed:', err.stack);
+            return res.status(503).json({ error: 'S3 Upload Failed' });
+        }
+        const s3Time = Date.now() - s3Start;
+        metrics.timing('s3.upload.time', s3Time);
 
-        const fileRecord = await File.create({
-            id: fileId,
-            file_name: fileName,
-            s3_url,
-            s3_key: key
-        });
+        const dbStart = Date.now();
+        try {
+            const fileRecord = await File.create({
+                id: fileId,
+                file_name: fileName,
+                s3_url,
+                s3_key: key
+            });
+            const dbTime = Date.now() - dbStart;
+            metrics.timing('db.query.create_file', dbTime);
+            metrics.increment('db.query.create_file.count');
 
-        res.status(201).json({
-            id: fileRecord.id,
-            file_name: fileRecord.file_name,
-            url: fileRecord.s3_url,
-            upload_date: fileRecord.upload_date
-        });
+            return res.status(201).json({
+                id: fileRecord.id,
+                file_name: fileRecord.file_name,
+                url: fileRecord.s3_url,
+                upload_date: fileRecord.upload_date
+            });
+        } catch (err) {
+            const dbTime = Date.now() - dbStart;
+            metrics.timing('db.query.create_file', dbTime);
+            metrics.increment('db.query.create_file.failed');
+            logger.error('DB create failed:', err.stack);
+            return res.status(503).json({ error: 'DB Error' });
+        }
     } catch (err) {
         logger.error('Upload error:', err.stack);
+        metrics.increment('api.upload.unexpected_failure');
         res.status(503).json({ error: 'Server Unavailable' });
     }
 });
 
 router.get('/file/:id', async (req, res) => {
     try {
+        const dbStart = Date.now();
         const file = await File.findByPk(req.params.id);
+        const dbTime = Date.now() - dbStart;
+
+        metrics.timing('db.query.find_file_by_id', dbTime);
+        metrics.increment('db.query.find_file_by_id.count');
 
         if (!file) {
+            metrics.increment('db.query.find_file_by_id.miss');
             return res.status(404).json({ error: 'File not found' });
         }
 
@@ -122,28 +150,49 @@ router.get('/file/:id', async (req, res) => {
         });
     } catch (err) {
         logger.error('Get file error:', err.stack);
+        metrics.increment('api.get_file.unexpected_failure');
         res.status(503).json({ error: 'Server Unavailable' });
     }
 });
 
 router.delete('/file/:id', async (req, res) => {
     try {
+        const dbStart = Date.now();
         const file = await File.findByPk(req.params.id);
+        const dbTime = Date.now() - dbStart;
+
+        metrics.timing('db.query.find_file_by_id', dbTime);
+        metrics.increment('db.query.find_file_by_id.count');
 
         if (!file) {
+            metrics.increment('db.query.find_file_by_id.miss');
             return res.status(404).json({ error: 'File not found' });
         }
 
-        const start = Date.now();
-        await deleteFile(file.s3_key);
-        const deleteTime = Date.now() - start;
-        metrics.timing('s3.delete.time', deleteTime);
+        const s3Start = Date.now();
+        try {
+            await deleteFile(file.s3_key);
+            metrics.increment('s3.delete.success');
+        } catch (err) {
+            const s3Time = Date.now() - s3Start;
+            metrics.timing('s3.delete.time', s3Time);
+            metrics.increment('s3.delete.failure');
+            logger.error('S3 delete failed:', err.stack);
+            return res.status(503).json({ error: 'S3 Delete Failed' });
+        }
+        const s3Time = Date.now() - s3Start;
+        metrics.timing('s3.delete.time', s3Time);
 
+        const dbDeleteStart = Date.now();
         await file.destroy();
+        const dbDeleteTime = Date.now() - dbDeleteStart;
+        metrics.timing('db.query.delete_file', dbDeleteTime);
+        metrics.increment('db.query.delete_file.count');
 
         res.status(204).send();
     } catch (err) {
         logger.error('Delete file error:', err.stack);
+        metrics.increment('api.delete_file.unexpected_failure');
         res.status(503).json({ error: 'Server Unavailable' });
     }
 });
@@ -154,15 +203,28 @@ app.all('/healthz', (req, res) => {
     res.status(405).send();
 });
 
+app.get('/v1/file', (req, res) => {
+    metrics.increment('api.invalid.get_v1_file');
+    res.status(400).json({ error: 'Bad Request' });
+});
+
+app.delete('/v1/file', (req, res) => {
+    metrics.increment('api.invalid.delete_v1_file');
+    res.status(400).json({ error: 'Bad Request' });
+});
+
 app.all('/v1/file', (req, res) => {
+    metrics.increment(`api.unsupported.${req.method}._v1_file`);
     res.status(405).json({ error: 'Method Not Allowed' });
 });
 
 app.all('/v1/file/:id', (req, res) => {
+    metrics.increment(`api.unsupported.${req.method}._v1_file_id`);
     res.status(405).json({ error: 'Method Not Allowed' });
 });
 
 module.exports = app;
+
 
 async function retryConnection(){
     let tries = 5;
