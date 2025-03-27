@@ -12,9 +12,11 @@ EnvironmentFile=/opt/webapp/.env
 ExecStart=/usr/bin/node /opt/webapp/server.js
 Restart=always
 RestartSec=3
-StandardOutput=syslog
-StandardError=syslog
+StandardOutput=append:/var/log/app_out.log
+StandardError=append:/var/log/app_err.log
 SyslogIdentifier=csye6225
 
 [Install]
 WantedBy=multi-user.target
+
+

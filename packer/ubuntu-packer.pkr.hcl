@@ -103,7 +103,7 @@ build {
   }
 
   provisioner "shell" {
-    script = "scripts/cloudwatch_agent"
+    script = "./scripts/cloudwatch_agent"
   }
 
   # Upload systemd unit file for webapp
