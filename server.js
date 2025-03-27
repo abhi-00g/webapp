@@ -62,7 +62,7 @@ router.post('/file', upload.single('file'), async (req, res) => {
 
         const fileId = uuidv4();
         const fileName = req.file.originalname;
-        const key = 'user-uploads/${fileId}-${fileName}';
+        const key = `user-uploads/${fileId}-${fileName}`;
 
         const s3_url = await uploadFile(req.file, key);
 
@@ -152,7 +152,7 @@ async function retryConnection(){
         }
         catch(err){
             tries = tries - 1;
-            console.error(Database connection failed. Retrying... (${tries} attempts left));
+            console.error(`Database connection failed. Retrying... (${tries} attempts left)`);
             await new Promise((resolve) => setTimeout(resolve, 8000));
         }
     }
@@ -186,7 +186,7 @@ async function start() {
         console.log('Models synced to the database!');
         monitorConnection();
         app.listen(PORT, () => {
-            console.log(Server is running on http://localhost:${PORT});
+            console.log(`Server is running on http://localhost:${PORT}`);
         });
     }
     catch (err) {
