@@ -1,5 +1,5 @@
 const StatsD = require('hot-shots');
-const client = new StatsD({
+const metrics = new StatsD({
   host: 'localhost',
   port: 8125,
   prefix: 'webapp.',
@@ -8,4 +8,4 @@ const client = new StatsD({
   },
 });
 
-module.exports = client;
+module.exports = metrics;

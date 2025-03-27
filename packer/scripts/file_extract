@@ -8,7 +8,7 @@ ZIP_FILE="/tmp/webapp.zip"
 # Extract application files
 echo "Extracting application..."
 sudo mkdir -p $APP_DIR
-sudo unzip -o "$ZIP_FILE" -d "/opt"
+sudo unzip -o "$ZIP_FILE" -d "$APP_DIR"
 
 
 # Remove unwanted __MACOSX files
