@@ -1,4 +1,3 @@
-server.js
 const express = require('express');
 const multer = require('multer');
 const sequelize = require('./config/database');
