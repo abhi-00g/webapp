@@ -1,0 +1,22 @@
+#!/bin/bash
+
+echo "Installing CloudWatch Agent..."
+
+# Install the CloudWatch Agent
+sudo apt update
+sudo apt install -y amazon-cloudwatch-agent
+
+# Copy the config file
+sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+sudo cp /tmp/cloudwatch-config.json /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+# Enable and start agent with config
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+  -s
+
+sudo systemctl enable amazon-cloudwatch-agent
+sudo systemctl start amazon-cloudwatch-agent
+
+echo "CloudWatch Agent installed and started"
