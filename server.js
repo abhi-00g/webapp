@@ -5,6 +5,8 @@ const File = require('./models/File');
 const { uploadFile, deleteFile } = require('./config/s3');
 const HealthCheck = require('./models/HealthCheck');
 const { v4: uuidv4 } = require('uuid');
+const logger = require('./utils/logger');
+const metrics = require('./utils/metrics'); 
 
 const app = express();
 const router = express.Router();
@@ -16,6 +18,20 @@ app.use(express.urlencoded({ extended: true }));
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+app.use((req, res, next) => {
+    const start = Date.now();
+    logger.info(`${req.method} ${req.originalUrl} requested`);
+
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        logger.info(`${req.method} ${req.originalUrl} completed in ${duration}ms`);
+        metrics.increment(`api.calls.${req.method}.${req.path.replace(/\//g, '_')}`);
+        metrics.timing(`api.latency.${req.method}.${req.path.replace(/\//g, '_')}`, duration);
+    });
+
+    next();
+});
+
 app.use('/v1', router);
 
 app.use('/healthz', express.text(), (req, res, next) => {
@@ -26,29 +42,32 @@ app.use('/healthz', express.text(), (req, res, next) => {
 });
 
 app.get('/healthz', async(req,res) => {
-    try{
+    try {
         if (Object.keys(req.query).length > 0) {
             return res.status(400).send();
         }
 
         const tableExists = await sequelize.getQueryInterface().showAllTables();
         if (!tableExists.includes('HealthChecks')) {
-            console.error('HealthCheck table does not exist. Returning 503.');
+            logger.error('HealthCheck table does not exist. Returning 503.');
             return res.status(503).send();
         }
 
+        const start = Date.now();
         await HealthCheck.create({
             datetime: new Date().toISOString(),
         });
+        const dbTime = Date.now() - start;
+        metrics.timing('db.insert.healthcheck', dbTime);
 
-        console.log('Health check record inserted successfully.');
+        logger.info('Health check record inserted successfully.');
         res.status(200)
             .set('Cache-Control', 'no-cache, no-store, must-revalidate')
             .set('Pragma', 'no-cache')
             .send();
     }
     catch(err){
-        console.error('Error during health check:', err);
+        logger.error('Error during health check:', err.stack);
         res.status(503).send();
     }
 });
@@ -63,7 +82,10 @@ router.post('/file', upload.single('file'), async (req, res) => {
         const fileName = req.file.originalname;
         const key = `user-uploads/${fileId}-${fileName}`;
 
+        const start = Date.now();
         const s3_url = await uploadFile(req.file, key);
+        const uploadTime = Date.now() - start;
+        metrics.timing('s3.upload.time', uploadTime);
 
         const fileRecord = await File.create({
             id: fileId,
@@ -79,7 +101,7 @@ router.post('/file', upload.single('file'), async (req, res) => {
             upload_date: fileRecord.upload_date
         });
     } catch (err) {
-        console.error('Upload error:', err);
+        logger.error('Upload error:', err.stack);
         res.status(503).json({ error: 'Server Unavailable' });
     }
 });
@@ -99,7 +121,7 @@ router.get('/file/:id', async (req, res) => {
             upload_date: file.upload_date
         });
     } catch (err) {
-        console.error('Get file error:', err);
+        logger.error('Get file error:', err.stack);
         res.status(503).json({ error: 'Server Unavailable' });
     }
 });
@@ -112,12 +134,16 @@ router.delete('/file/:id', async (req, res) => {
             return res.status(404).json({ error: 'File not found' });
         }
 
+        const start = Date.now();
         await deleteFile(file.s3_key);
+        const deleteTime = Date.now() - start;
+        metrics.timing('s3.delete.time', deleteTime);
+
         await file.destroy();
 
         res.status(204).send();
     } catch (err) {
-        console.error('Delete file error:', err);
+        logger.error('Delete file error:', err.stack);
         res.status(503).json({ error: 'Server Unavailable' });
     }
 });
@@ -143,20 +169,19 @@ async function retryConnection(){
     while(tries){
         try{
             await sequelize.authenticate();
-            console.log('Database reconnected successfully!!');
-
+            logger.info('Database reconnected successfully!!');
             await sequelize.sync({ alter: true });
-            console.log('Models synced to the database after reconnection!');
+            logger.info('Models synced to the database after reconnection!');
             return;
         }
         catch(err){
             tries = tries - 1;
-            console.error(`Database connection failed. Retrying... (${tries} attempts left)`);
+            logger.error(`Database connection failed. Retrying... (${tries} attempts left)`);
             await new Promise((resolve) => setTimeout(resolve, 8000));
         }
     }
     if (tries === 0) {
-        console.error('Failed to reconnect to the database after multiple attempts.');
+        logger.error('Failed to reconnect to the database after multiple attempts.');
     }
 }
 
@@ -164,38 +189,38 @@ function monitorConnection() {
     setInterval(async () => {
         try {
             await sequelize.authenticate();
-            console.log('Database connection is healthy.');
+            logger.info('Database connection is healthy.');
         } catch (err) {
-            console.error('Lost connection to the database. Attempting to reconnect...');
+            logger.error('Lost connection to the database. Attempting to reconnect...');
             await retryConnection();
         }
     }, 40000);
 }
 
 app.use((err, req, res, next) => {
-    console.error('Unhandled exception:', err);
+    logger.error('Unhandled exception:', err.stack);
     res.status(500).send('Something went wrong.');
 });
 
 async function start() {
     try{
         await sequelize.authenticate();
-        console.log('Database connected successfully!!');
+        logger.info('Database connected successfully!!');
         await sequelize.sync({ alter: true, logging: console.log });
-        console.log('Models synced to the database!');
+        logger.info('Models synced to the database!');
         monitorConnection();
         app.listen(PORT, () => {
-            console.log(`Server is running on http://localhost:${PORT}`);
+            logger.info(`Server is running on http://localhost:${PORT}`);
         });
     }
     catch (err) {
-        console.error('Error starting the server:', err);
+        logger.error('Error starting the server:', err.stack);
     }
 }
 
 process.on('SIGINT', async () => {
     await sequelize.close();
-    console.log('Database connection closed successfully!');
+    logger.info('Database connection closed successfully!');
     process.exit(0);
 });
 
