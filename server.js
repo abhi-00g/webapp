@@ -62,7 +62,7 @@ router.post('/file', upload.single('file'), async (req, res) => {
 
         const fileId = uuidv4();
         const fileName = req.file.originalname;
-        const key = user-uploads/${fileId}-${fileName};
+        const key = 'user-uploads/${fileId}-${fileName}';
 
         const s3_url = await uploadFile(req.file, key);
 
