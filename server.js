@@ -70,6 +70,42 @@ app.get('/healthz', async(req,res) => {
     }
 });
 
+app.use('/cicd', express.text(), (req, res, next) => {
+    if (req.get('Content-Length') && req.get('Content-Length') !== '0') {
+        return res.status(400).send(); 
+    }
+    next();
+});
+
+app.get('/cicd', async (req, res) => {
+    try {
+        if (Object.keys(req.query).length > 0) {
+            return res.status(400).send();
+        }
+
+        const tableExists = await sequelize.getQueryInterface().showAllTables();
+        if (!tableExists.includes('HealthChecks')) {
+            logger.error('HealthCheck table does not exist for /cicd. Returning 503.');
+            return res.status(503).send();
+        }
+
+        const start = Date.now();
+        await HealthCheck.create({ datetime: new Date().toISOString() });
+        const dbTime = Date.now() - start;
+        metrics.timing('db.insert.cicd', dbTime);
+
+        logger.info('CICD check record inserted successfully.');
+        res.status(200)
+            .set('Cache-Control', 'no-cache, no-store, must-revalidate')
+            .set('Pragma', 'no-cache')
+            .send();
+    } catch (err) {
+        logger.error('Error during CICD check:', err.stack);
+        metrics.increment('api.cicd.failed');
+        res.status(503).send();
+    }
+});
+
 router.post('/file', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
