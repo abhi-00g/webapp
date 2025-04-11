@@ -1,7 +1,9 @@
-name: CI Packer Build
+name: CI Packer Build and Deploy
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
       - main
 
@@ -10,8 +12,8 @@ env:
 
 jobs:
   integration-test:
-    if: github.repository == 'csye6225-venkatagade/webapp'
-    name: integration test
+    if: github.event.pull_request.merged == true && github.repository == 'csye6225-venkatagade/webapp'
+    name: Integration Test
     runs-on: ubuntu-latest
     env:
       DB_NAME: ${{ secrets.DB_NAME }}
@@ -39,7 +41,7 @@ jobs:
           CREATE DATABASE health_check_db;
           EOF
 
-      - name: Set up Node.js using GitHub Action
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "18.x"
@@ -51,7 +53,7 @@ jobs:
         run: npx jest tests/HealthCheck.test.js
 
   build-images:
-    name: Packer Build
+    name: Build Images and Deploy
     needs: integration-test
     runs-on: ubuntu-latest
 
@@ -64,7 +66,7 @@ jobs:
         with:
           version: ${{ env.PACKER_VERSION }}
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials for DEV Account
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -82,7 +84,6 @@ jobs:
           echo "GCP_EMAIL=$GCP_EMAIL" >> $GITHUB_ENV
 
       - name: Build Application Artifact
-        working-directory: .
         run: zip -r webapp.zip .
 
       - name: Initialize Packer
@@ -115,15 +116,71 @@ jobs:
             -var "machine_type=${{ secrets.MACHINE_TYPE }}" \
             -var "service_account_email=${{ env.GCP_EMAIL }}" \
             . | tee $HOME/packer_output.log
-      - name: Extract AMI ID
-        id: extract_packer_outputs
-        run: |
-          AMI_ID=$(grep -oP 'ami-[a-f0-9]+' $HOME/packer_output.log | tail -1)        
-          echo "ami-id=$AMI_ID" >> $GITHUB_ENV
 
-      - name: Share AWS AMI with Another AWS Account
+      - name: Extract AMI ID
+        id: extract_ami
+        run: |
+          AMI_ID=$(grep -oP 'ami-[a-f0-9]+' $HOME/packer_output.log | tail -1)
+          echo "ami_id=$AMI_ID" >> $GITHUB_ENV
+
+      - name: Share AMI with DEMO Account
         run: |
           aws ec2 modify-image-attribute \
-            --image-id ${{ env.ami-id }} \
+            --image-id ${{ env.ami_id }} \
             --launch-permission "Add=[{UserId=${{ secrets.AWS_DEMO_ACCOUNT_ID }} }]" \
             --region ${{ secrets.AWS_REGION }}
+
+      # --- NEW SECTION STARTS HERE ---
+
+      - name: Reconfigure AWS Credentials for DEMO Account
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_DEMO_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_DEMO_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Create New Launch Template Version
+        run: |
+          aws ec2 create-launch-template-version \
+            --launch-template-name "webapp-launch-template" \
+            --source-version '$Latest' \
+            --launch-template-data "{\"ImageId\":\"${{ env.ami_id }}\"}"
+
+      - name: Start Instance Refresh
+        id: start_refresh
+        run: |
+          REFRESH_ID=$(aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name "webapp-asg" \
+            --preferences '{"MinHealthyPercentage":90,"InstanceWarmup":300}' \
+            --query 'InstanceRefreshId' --output text)
+          echo "refresh_id=$REFRESH_ID" >> $GITHUB_ENV
+
+      - name: Wait for Instance Refresh to Complete
+        run: |
+          echo "Waiting for instance refresh to complete..."
+          ATTEMPTS=60
+
+          for ((i=1; i<=ATTEMPTS; i++))
+          do
+            STATUS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name "webapp-asg" \
+              --instance-refresh-ids "${{ env.refresh_id }}" \
+              --query "InstanceRefreshes[0].Status" \
+              --output text)
+
+            echo "Current Status: $STATUS"
+
+            if [[ "$STATUS" == "Successful" ]]; then
+              echo "Instance Refresh Completed Successfully"
+              exit 0
+            elif [[ "$STATUS" == "Failed" || "$STATUS" == "Cancelled" ]]; then
+              echo "Instance Refresh Failed or Cancelled"
+              exit 1
+            else
+              echo "Still In Progress...waiting 30 seconds..."
+              sleep 30
+            fi
+          done
+
+          echo "Instance Refresh did not complete within expected time."
+          exit 1
