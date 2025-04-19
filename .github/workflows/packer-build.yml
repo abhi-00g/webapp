@@ -151,7 +151,7 @@ jobs:
         run: |
           REFRESH_ID=$(aws autoscaling start-instance-refresh \
             --auto-scaling-group-name "webapp-asg" \
-            --preferences '{"MinHealthyPercentage":90,"InstanceWarmup":300}' \
+            --preferences '{"MinHealthyPercentage":90,"InstanceWarmup":90}' \
             --query 'InstanceRefreshId' --output text)
           echo "refresh_id=$REFRESH_ID" >> $GITHUB_ENV
 
